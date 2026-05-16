@@ -1,0 +1,569 @@
+# 毕业论文 · Housing Price Prediction in London
+
+Housing Price Prediction in London:
+
+A Predictive Analysis Based on Property Advertisement Texts
+
+Yuning Jiang
+
+CASA0004: MSc Dissertation
+
+Supervisor: Dr. Jonathan Reades
+
+Word Count: 10914
+
+GitHub
+
+'This dissertation is submitted in part requirement for the MSc in the Centre for Advanced Spatial Analysis, Bartlett Faculty of the Build Environment, UCL
+
+22 August 2022
+
+Abstract
+
+This study employs NLP techniques to extract keyword features from property advertisement texts and applies machine learning models to quantify the impacts of these keyword features on the housing price. This study extracts 25 keyword features most frequently mentioned, involving five aspects: property ownership, purchase chain, location characteristics, functional zonings, and some other housing attributes. Six among 25 keywords features: central heating, no chain, good location, double bedroom, garden orientation, and ground floor, are found to have a greater impact on housing prices than other keyword features. Except for the garden orientation, the other five housing characteristics have a negative impact on housing prices. Through further analysis, this paper speculates that the most common keyword features in property descriptions tend to be the marketing focus of cheap properties. This study contributes to enhancing the property dataset to improve current housing price prediction.
+
+Acknowledgements
+
+I would like to express my deepest gratitude to my supervisor, Dr. Jonathan Reades, who has provided me with a great deal of assistance and advice throughout the process of writing this dissertation. I would also like to thank my family and friends for their encouragement.
+
+Declaration of Authorship
+
+I, Yuning Jiang, hereby declare that this dissertation is all my own original work and that all sources have been acknowledged. It is 10914 words in length.
+
+Yuning,Jiang
+
+22 August 2022
+
+List of Figures
+
+Figure 3.1. Research Methodology Flowcharts	14
+
+Figure 3.2 Study Area: London Sub-regions. According to London Plan Consultation (2009), Greater London can be divided into five sub regions: Central, North, East, South and West. The latest version is released in 2011.	15
+
+Figure 3.3 Price distribution before and after logarithm	16
+
+Figure 3.4 Distribution of property type in Zoopla property data in London	17
+
+Figure 3.5 Schematic diagram of the logistic behind sub-level classification decision	21
+
+Figure 4.1 Top 30 garden modifiers	25
+
+Figure 4.2 Top 30 parking modifiers	26
+
+Figure 4.3 Top 30 reception modifiers	27
+
+Figure 4.4 Top 30 kitchen modifiers	28
+
+Figure 4.5 Correlation matrix among variables	29
+
+Figure 4.6 The coefficients of significant variable in Lasso regression without keyword features	30
+
+Figure 4.7 The coefficients of significant variable in Lasso regression with keyword features	31
+
+Figure 4.8 The variables ranked by importance in XGBoost model without keyword features	32
+
+Figure 4.9 The variables ranked by importance in XGBoost model with keyword features	32
+
+List of Tables
+
+Table 3.1 Selected Zoopla housing features for analysis and their descriptions	17
+
+Table 3.2 a sample text transformation applied to the bullet description	19
+
+Table 3.3 Top 15 most frequently occurred single word, two-word collocation (Bigram), and three-word collocation (Trigram) in the bullet description	20
+
+Table 3.4 preliminary classified housing features extracted from the bullet description	21
+
+Table 3.5 samples of extracting Garden modifiers from the cleaned bullet description	22
+
+Table 4.1 Garden variables picked and grouped from the top 30 garden modifiers	27
+
+Table 4.2 Parking variables picked and grouped from the top 30 parking modifiers	28
+
+Table 4.3 Reception variables picked and grouped from the top 30 reception modifiers	29
+
+Table 4.4 Kitchen variables picked and grouped from the top 30 kitchen modifiers	30
+
+Table 4.6 R2 of Lasso and XGBoost models with and without keyword features	31
+
+Table 5.1 The average property price and the proportion of significant  keyword features in each score level	38
+
+1.Introduction
+
+As the largest real estate market in the UK, the London housing market has been attached great importance by interested parties such as tenants, property owners, policymakers in the real estate industry, and urban planning authorities (Greenaway-McGrevy and Sorensen, 2021). Since 1996, house prices in London have long exceeded any other region in England and Wales, and observed increases have far outstripped growth in individual earnings and housing supply (Marsden, 2015). Greater financial liberalization and historically low borrowing costs have also contributed to the rise in house prices, which has placed increased pressure on economic and social aspects such as living conditions, crowding, and an increasing reliance on housing benefits. In the 2018 London Housing Strategy, the Mayor of London sought to tackle London's housing crisis by providing more high-quality and affordable homes (Greater London Authority, 2018). However, according to the annual housing report in London (Greater London Authority, 2021), through 2020, London's housing costs still result in nearly half of all children living in private-rented homes, and more than 60% of those in social-rented homes live in poverty.
+
+These abovementioned issues make monitoring London's housing market crucial. Housing price is a significant indicator of the housing market, so understanding house price patterns and influential features are crucial to assisting stakeholders' decision-making. Previous academic studies have explored various prediction models to evaluate the impacts of various features, including housing amenities, neighborhood environment, geographical location, and macroeconomic factors on the housing price (Lu et al., 2017; J et al., 2021; Adetunji et al., 2022; Levantesi and Piscopo, 2020). However, there may still have an enormous amount of uncaptured house characteristics that may impact the property value, hiding in the unstructured real estate data (Shen and Ross, 2021). For example, while the number of bedrooms is viewed as one influential housing feature, to what extent the decoration of bedrooms also impacts the property value is unclear (Liberti and Petersen, 2019). Fortunately, the recent development of text mining techniques allows extracting keyword features from textual descriptions.
+
+Up to this point, this paper comes up with a research question: Can we enhance the housing dataset by extracting and quantifying housing characteristics from textual descriptions to improve the housing price prediction in London? This research question can be further broken down as follows:
+
+1. What uncaptured housing characteristics can be extracted from property advertisement descriptions?
+
+2. To what extent do these housing characteristics from property advertisement descriptions improve house price predictions?
+
+In order to answer the above questions, this paper first applies the Natual Language Processing (NLP) technique to extract uncaptured housing characteristics from property advertisement descriptions as keyword features, then quantifies these keyword features, and finally constructs regression models to evaluate the impacts of these keyword features.
+
+This paper is structured as follows: Section 2 elaborates the literature review; Section 3 describes the details of the methodology; Section 4 presents the results; Section 5 discusses the implications and limitations; Section 6 draws a conclusion.
+
+2. Literature Review
+
+This section is divided into four parts. The first part clarifies the importance of understanding and monitoring the housing market. The second part reviews relevant theories, hedonic pricing theory in particular, and features of early empirical works on housing price prediction. The following part provides an overview of the development of empirical works on both methodologies and data selection and points out the current data limitation. The last part introduces the new methodology, Natural Language Processing (NLP), that could address the deficiency of current studies.
+
+2.1 The importance of monitoring housing market
+
+The housing market has come in for a great deal of attention from civic groups and policy makers because housing costs are often the largest single expense of most households that contribute a significant share to total expenditures (Hacıevliyagil, Drachal, and Eksi, 2022). For this reason, any change in the housing market would cause fluctuations in macroeconomic variables such as GDP, interest rate, investment, and price indices and considerably affect the economic stability (Bi̇li̇k and Aydin, 2019).
+
+In hedonic theory, the ideal housing market should follow the supply and demand, with house prices determined by fundamental drivers such as population growth, access to employment, and income attractiveness (Marsden, 2015). However, some factors could distort the housing market. For instance, prolonged housing price rises, together with excessive investments, would lead to housing bubbles, negatively impacting sustainable economic growth. The mortgage crisis in the US in 2008 that triggered a global financial crisis is a typical case. In addition, speculative demand (such as for a second home) over and above the basic physical need for a home could raise the vacancy rate and eat into the housing supply (Bourne, 2019). Several communities in Cornwall, UK, have voted to ban second homes as a local response to the negative impact of speculative investment (BBC News, 2017).
+
+As well, the impact of overseas investment on the housing market has caused controversy for a long time. One concern is that overseas investment will increase the volatility of the housing market since the international money suddenly flows in and out. Another concern is that for speculative purposes, like second homes, foreign investment raises the vacancy rate and inflates property prices (see, for example, Hamnett and Reades 2019). Though Marsden (2015) claimed that most properties in London with overseas ownership were not actually empty, the ripple effect of overseas investment was proved to make the housing market vulnerable, especially for global cities such as London, New York, and Singapore (Badarinza and Ramadorai,  2018).
+
+On the other hand, virtuous housing investments can drive the development of real estate and related industries and provide a great deal of employment post for society (Sari, Ewing, and Aydin, 2007). At the end of 2019, it was estimated that 377,000 people were directly employed in London's construction sector, the highest total since 2004, when the data began to be collected (Greater London Authority, 2021).
+
+2.2 Early empirical works: hedonic pricing model and determinants of house prices
+
+House prices in London have gained attention from scholars since a few decades ago.  Inspired by Lancaster's economic assumption (1966) (later called the hedonic pricing model), coupled with the gradual introduction of computers to universities which made quantitative data analysis possible (Passey, 2014), the early 1970s ushered in a research enthusiasm on the determinants of house prices. Based on Lancaster's theory that the value of goods is determined by their utility-bearing multiple characteristics in fixed proportions, Lane estimated the house price in London with a regression approach (1970, cited in Ball, 1973). Data on 287 recently-moved household was obtained from estate agents, and logged floor area, house type, number of floors, garage, and accessibility index were used to estimate the house price. The accessibility index was found to be the most important variable.
+
+The following year, Wabe (1971) published a study on the effect of demand on property prices in the London metropolitan area. A dataset of 1,800 transactions from the National Building Society during the first three months of 1968 was used. In this study, Wabe applied an OLS regression model and classified potential influencing variables into two categories: location parameters and house parameters. Location parameters contained each borough's geographic and environmental conditions, including census data on accessibility, socioeconomic class, population density, and proximity to green belts. The house parameters described the average physical characteristics of the house, including floor area, house construction year, possession of central heating and garage, and all of these were averaged to each set of data (93 cases in total). Because the data were grouped into boroughs, Wabe's research was based on the assumption that there are no differences within boroughs and the determinants of average house prices in each borough as the purpose of the study (Ball, 1973). The results showed that all variables except the garage were significant, with an overall R2 as high as 0.9. However, Wabe (1971) explained that grouping data tended to lead to inefficient results and inflated R2. Furthermore, the accuracy of individual coefficients was questioned due to considerable multicollinearity.
+
+Residential location theory sought to address the relationship between values and location, and was stated to suit the new pattern of housing development in cities (Ricks, 1970). For example, Evans (1973) focused on the relationship between London house prices and distance. For this reason, many of the non-distance variables in Lane and Wabe's study were excluded by Evans. Instead, Evans collected property sales data from real estate agents and used explanatory variables such as floor space, distance to the CBD, and remaining lease years to predict house prices. Boroughs with similar living conditions and socioeconomic groups were selected as target areas along a radial line extending from central London, including Regent's Park, Highgate, Finchley, and Barnett Radius. Evans' results showed that distance could explain most of the variation in prices, while floor area, considered the most crucial variable in Wabe's study, became insignificant in Evans' study. Ball (1973) thought that the different results between the two studies might be due to changes in variable selection, and in Evans' study, a logarithmic variable was used.
+
+Meanwhile, determinants of residential house prices were also studied in other regions of the UK and other countries. For instance, Richardson, Vipond, and Furbey (1974) focused on Edinburgh, examining the residential location theory with a sample of 1176 sales in 1966. On the other side of the Atlantic, Kain and Quigley (1970) predicted the house prices in St Louis, a small town in Missouri, US, with data including quality judgments about the interior and external of the house and the environmental quality of the neighborhood obtained by interviewing 1500 households.
+
+Ball (1973) reviewed and compared 11 empirical works on the determinants of house prices and summarized and compared their main results. Papers covered significant studies in UK and US in early 1970. Most studies in that period were inspired by the hedonic supply and demand theory or residential location theory and used a multiple linear regression methodology, with a few using factor analyses. Harry, Joan, and Robert (1974) examined the empirical validity of the housing price theories and compared the method selection between factor analysis and regression. They argued that factor analysis was more appropriate when selecting a few critical variables out of plenty of potential variables with little theoretical support, while multiple regression allowed quantification of the approximate monetary impact of potential variables. Though early studies had various focuses on determinants of price, distance or some forms of locational variables and environmental variables were recognized as significant in most studies. At the same time, most papers thought a non-linear relationship between house price and distance could give a better fit (Ball, 1973). In addition, these studies mostly got high R2, especially for those using grouped data. However, data limitation was a significant obstacle since grouped data could easily ignore essential variations, but individual prices with details were hard to access.
+
+Though there was no uniform name then, most early house price studies were conducted with hedonic pricing modeling based on multiple regression analysis (Selim, 2009). Regardless of supply and demand theory or residential location theory, studies can all be summarised by aiming to construct an index of desirability and usefulness related to the weighting of the characteristics associated with house prices (Goodman, 1998). Especially after Rosen (1974) extended the hedonic pricing model into housing market, in later decades, the hedonic-based approach has been massively applied in the housing market to access the price impacts for key characteristics and to construct housing price indices (Can, 1992; Shappard, 1999; Selim, 2009; Bennöhr and Oestmann, 2014; Wang, Li, and Wu, 2020; Zhang, 2021)
+
+2.3 Development of hedonic regression models and data selection
+
+Early empirical works laid a solid foundation for hedonic-based regression models, particularly multiple linear regression, to become the classic method for predicting house prices. However, the multiple linear regression seems to be so straightforward in estimating the relationship between house price and related characteristics that it could be problematic in dealing with broader aspects such as outliers, multicollinearity, non-linearity, spatial dependency and disparity, overfitting, and fuzziness (Sheppard, 1999; Fan, Ong, and Koh, 2006; Selim, 2009). Thus, researchers actively search for plausible alternatives.
+
+In recent years, with the rapid diffusion of artificial intelligence, machine learning techniques have been widely applied in housing price prediction (Adetunji et al., 2022). Compared to traditional programming, machine learning constructs models from the input data rather than simply executing a sequence of a mathematical formula, explores the insightful nature of input data, and gets a better prediction performance (Parthasarathy, 2019; Levantesi and Piscopo, 2020).
+
+Lasso (Least Absolute Shrinkage and Selection Operator) could be regarded as an extension of hedonic linear regression models that produce interpretable models like subset selection and regression technique (Tibshirani, 1996). By forcing variable coefficients to zero, Lasso essentially avoids the problems of multicollinearity and overfitting in general linear regression. It is compelling when there are many variables because only meaningful variables can remain. For this reason, it has been utilized extensively in housing price prediction, complemented by machine learning techniques, to find valuable characteristics (Lu et al., 2017; Madhuri, Anuradha, and Pujitha, 2019).
+
+Ensemble learning, a branch of machine learning technique that combines several base models built with a given learning algorithm to produce one effective optimal prediction, is also a popular choice (Lutins, 2017). Bagging, such as random forest (Levantesi and Piscopo, 2020; Adetunji et al., 2022), and boosting, such as XGBoost (J et al., 2021) methods are both examples of ensemble learning. Adetunji et al. (2022) applied a random forest machine learning technique to model housing prices using a Boston housing dataset containing 506 entries and 14 attributes. Levantesi and Piscopo (2020) focused on London, using average house prices in boroughs as the dependent variable and economic indicators as explanatory variables. In another study, the XGBoost regression algorithm was applied to predict house prices with the data obtained from Kaggle, including around 1500 records and 80 attributes (J et al., 2021). These studies showed that ensemble learning could deal with more attributes and give more accurate predictions than conventional algorithms.
+
+Besides Lasso regression and ensemble learning, geographically weighted regression (GWR) is another common alternative to predict the house price. Hedonic regression models conceptualize the housing market as a single unified one (Bitter et al., 2007). However, spatial disparity of housing characteristics and prices is a fundamental characteristic of any housing market. For example, buyers in rural markets might attach more value to garages than buyers in urban markets. Property attributes might have different weights in different geographic areas. Thus, hedonic regression models were considered restricted in neglecting the geographic variations in the housing market, resulting in overestimating prices in some neighborhoods and underestimating prices in others (Fotheringham et al., 2001). Following Tobler (1970) 's first law, "everything is related to everything else, but near things are more related than distant things," GWR is a non-stationary technique to model local relationships (McCord et al., 2012).  Compared to traditional hedonic regression models, GWR allows relationships between dependent and explanatory variables to vary continuously over the study area (Lu et al., 2014). McCord et al (2012) undertook a comparative empirical analysis of traditional hedonic models and GWR, addressing the locational characteristics of the house price. Spatial heterogeneity was evident through modeling data in the Belfast Local Government District (LGD) within Northern Ireland. So McCord et al declared that there was a need to explicitly address spatial heterogeneity in housing market models.
+
+Lu et al. (2014) took a step further and applied GWR models with different distance metrics. Lu et al. pointed out that most GWR analyses used the Euclidean distance (ED). However, for GWR studies involving complex conditions, geographical space is usually too complicated to be measured simply by ED metrics. So in their case study of London, with the data obtained from the Nationwide Building Society of the United Kingdom in 2001, they compared different distance metrics involving ED, road network distance, and travel time. The result showed that travel time metrics were performing the best in fitting the London house market.
+
+While the prediction technologies develop, determinants of house prices are also consistently explored. The House Price Index (HPI), the changes in the value of residential properties, is a commonly used explanatory variable (Bennöhr and Oestmann, 2014; Wang, Li, and Wu, 2020). However, HPI is criticized as inefficient for predicting the house price because it is merely a rough predictor based on all transactions (Lu et al., 2017; J et al., 2021; Adetunji et al., 2022). In most other studies, the explanatory variables for house price prediction are diverse and can be divided into several main categories (Levantesi and Piscopo, 2020). House characteristics, such as the number of bedrooms and floor area, are a primary type of variable. Another kind of variable is the neighborhood environment, including some socioeconomic factors such as population density and average income. In addition, the location of the property is also an essential factor. From a macroeconomic perspective, interest rates, government regulation, economic growth, and political instability were usually considered to interact with house markets.
+
+However, the overall quality of data, especially for UK-based studies, has been fairly poor. Chi et al. (2021) criticized the limitation of existing house price datasets, arguing that current studies were hindered by the lack of an extensive and comprehensive dataset. Most data used in previous studies are either aggregated to coarse geographies such as region and district or a small sample of individual properties in potential biases inherent. Chi et al. addressed this gap by creating a new dataset linked residential transactional records from Land Registry Price Paid Data (LR-PPD) and attribute data from Domestic Energy Performance Certificates (EPCs). The linked dataset provided the most accurate (publicly accessible) picture to-date of residential property information at the address level in the whole of England and Wales.
+
+Overall, in current times, with the application of machine learning techniques, various regression approaches to compensate for the inevitable deficiencies of hedonic regression models have been applied to pursue a higher prediction performance. The choice of explanatory variables is diverse but mainly categorized into house characteristics, neighborhood environment, geographical location, and macroeconomic factors. The linkage between PPD and EPCs fills the current data gap in the UK, providing a relatively comprehensive dataset.
+
+2.4 Filling the deficiency: Natural Lanaguage Processing in house pirce prediction
+
+The work of Chi et al. (2021) provided, for the first time, a comprehensive housing dataset for UK-based housing analysis. However, an enormous amount of detail about house characteristics and neighborhood environment are still missing. In addition to "hard" characteristics such as the number of bedrooms, the textual description containing the unreported "soft" features of the property also impacts the property value (Shen and Ross, 2021). Fortunately, the recent development of text mining techniques provides the possibility of supplementing information from textual descriptions.
+
+Text mining is the process of automatically detecting and extracting meaningful information from a large corpus of unstructured text, often combining natural language processing (NLP), data mining, artificial intelligence, and information retrieval (Abbe et al., 2016; Rzhetsky et al., 2009). In the era of big data, the text mining technique is essential to assist with decision-making through topic analysis, keyword extraction, and sentiment analysis. It has been widely adapted to multiple fields, such as medicine, construction management, tourism, and e-commerce platforms (Abbe et al., 2008; Zhang, 2022; Valdivia et al., 2017; Benlahbib et al., 2022).
+
+Though some literature discussed the impact of positive and negative words in property advertisements (Goodwin, Waller, and Weeks, 2014; Liu et al., 2020),  most current NLP studies of the housing market primarily address extracting keywords from unstructured real estate data to evaluate the house value. Beracha and Wintoki (2013) explored the effectiveness of Google search keywords in predicting house prices in U.S. cities. Using text mining techniques, they detected keywords related to “real estate” or “rent” and found that the current online search intensity of these words could help predict the future house price changes. Compared to the entire U.S. housing market, a specific city with a higher or lower search intensity for real estate anomalies preceded by positive and negative anomalous home price changes in that city, respectively.
+
+Guo et al. (2020) extended this work to the Chinese housing market, combining text mining approaches and machine learning techniques to forecast housing prices. Instead of Google Index, the paper obtained keywords from the local search engine, Baidu, and the Chinese National Knowledge Infrastructure (CNKI). Guo et al. claimed all possible keywords related to housing prices had been obtained since Baidu represents the preference of buyers and sellers of the housing market, and the CNKI shows the viewpoint of scholars and experts. After text mining procedures involving Web crawler, SQL filter, JieBa, and Word2vec, 29 keywords were filtered and quantified by being inserted into the Baidu search indices. Then these 29 keywords were used as the dependent variables to predict Shanghai's monthly housing prices data from 2011 to 2017 with multiple machine learning techniques. Their results found that random forest can have the best prediction performance, and keywords related to the state of the second-hand housing market and the level of mortgage interest are critical for housing price prediction in Shanghai.
+
+Shen and Ross (2021) also employed the machine learning technique to extract and quantify the meaningful information in textual property descriptions, using a dataset containing over 40,000 properties displayed and sold in the metropolitan Atlanta housing market. They found that the textual descriptions contain unobserved information that traditional property characteristics cannot capture, which leads to increased property value in a hedonic pricing model. They also criticized the regression models with the only use of HPI, which ignored these unobserved qualities of properties, would overstate the property value.
+
+3. Methodology
+
+The above section has highlighted the importance of monitoring London’s house prices. It looks through the development of models on housing price prediction from the hedonic regression model to newly improved models such as Lasso, random forest, gradient boosting, and GWR, accompanied by the discussion on varieties, deficiency, and development of housing datasets.
+
+This section will stand on previous scholars’ shoulders, taking regression models that have been proved efficient such as Lasso and gradient boosting, and utilizing NLP to extract and quantify unobserved features from textual descriptions, to improve the current housing price prediction. The methodology section has been separated into distinct sub-processes, alongside the overall methodology flowchart displayed in the following figure (Figure 3.1). The methodology section contains four parts: the first part introduces the data source, study area, and applicable geographical scale; The second part explores and pre-processes the dataset with all variables except textual information; The third part applies the NLP technique to extract and quantify unobserved housing characteristics from the Zoopla bullet attribute description; The last part conducts regression models to examine the impact of keyword features and compare the prediction performances between models. The analysis is carried out using Python, and a reproducible analysis is available through GitHub.
+
+Figure 3.1. Research Methodology Flowchart
+
+3.1 Data and Study Area
+
+This analysis uses 2020 Zoopla Property Sale Data, which is anonymized, managed, and sub-licensed on the behalf for research purposes by the Urban Big Data Center (UBDC) at Glasgow. The data has been accessed through the sub-license agreement and the UBDC access agreement. As one of the UK’s leading providers of property data for consumers and professionals, Zoopla owns a massive dataset containing information about the property price, location, and “hard” property features such as the number of floors and bedrooms. More importantly, it provides characteristic descriptions and bullets for most property listings, which may have unobserved “soft” characteristics that impact the property value. 2020 Zoopla Property Sale Data has over 400000 property listing records with 50 columns in London. After dropping duplicated records and listings without basic housing characteristics information, 138587 records are still kept for this analysis.
+
+The research area focuses on London, the largest real estate market in the UK. Since previous studies have shown that geographic location is a dominant variable and dramatically impacts the regression results, this study will blur geographic location to highlight the impact of textual housing characteristics on housing prices. Instead of using boroughs or more precise location information, this study assigns properties to five subregions based on boroughs (Figure 3.2). In addition, the fuzzy spatial information is hoped to avoid overfitting the model in a specific city and make the model more applicable in other regions.
+
+Figure 3.2 Study Area: London Sub-regions. According to London Plan Consultation (2009), Greater London can be divided into five sub regions: Central, North, East, South and West. The latest version is released in 2011.
+
+3.2 Data Preprocessing and Exploring Data Analysis (EDA)
+
+Although the Zoopla dataset contains 50 columns, most columns are information about agents and administrative divisions. There are also columns that record changes in the same housing characteristics over different time periods. For example, Zoopla details multiple prices for a property, including the price at which the property appeared on the first and last day, the lowest and highest price, and the unique value of price changes observed during the listing period. However, the study does not require so many prices, so only the last day's price that could be considered transaction prices is selected. After removing redundant and irrelevant attribute columns, 8 variables remained (Table 3.1). It is worth mentioning that while the Zoopla dataset contains description columns that describe attributes using paragraphs, this study uses a bullet column instead, which already highlights the main features of attributes from the descriptions.
+
+Table 3.1 Selected Zoopla housing features for analysis and their descriptions
+
+With the ultimate purpose of constructing regression models to predict the housing price in London, the price_last column is the dependent variable. Using the logarithmically transforming variables is a common and effective way to handle the non-linear relationship to fit a linear regression model (Benoit, 2011). This analysis thus uses a logged price to transform the highly skewed price distribution into a more approximately normal one. The un-logged price is highly right-skewed with a value of 16.84. After logarithm transformation, the skew value is down to 0.97. Outliers are also detected, and there is a total of 6155 outliers. However, most of them have been kept, considering that costly or cheap housing prices could also exist in the real world. Only properties with 0 value are considered extremely unreasonable and are kicked out.
+
+Figure 3.3 Price distribution before and after logarithm
+
+In addition to the dependent variable, the independent variables also need to be pre-processed. After checking four numerical variables, bed, floor, bathroom, and reception, the number of bathrooms is found problematic. 11393 records show 0 bathrooms. However, if checking the house description in bullet, many of them do have bathrooms but no records in the num_bath_max column. One possible explanation is that these lists left out the number of bathrooms when entering the data into the database. This study decided not to use the record of properties with 0 bathrooms to ensure the accuracy of the data.
+
+On the other hand, categorical features, including property types and sub-regions, are transformed into dummy variables to capture the influence of categorical variables in regression analysis (Trochim, n.d., Yip and Tsang, 2007). Although there are 33 varieties of property types, most properties are grouped into a few limited property types. Therefore, this study only selects major property types with more than 1000 records. In the end, seven property types remained: End terrace house, Flat, Studio, Maisonette, Semi-detached house, Detached house, and Terraced house.
+
+Figure 3.4 Distribution of property type in Zoopla property data in London
+
+3.3 Extracting and quantifying keywords with NLP analysis
+
+After cleaning the numerical and categorical variables, it is time to deal with bullet column and get textual variables. Though the bullet already represents the key characteristics of each property, it still needs to be cleaned and analysed to extract the most meaningful and iconic keywords from a bunch of textual information. Natural language processing (NLP) supports the entire text mining procedure.
+
+3.3.1 Text transformations: cleaning bullet description
+
+Text pre-processing is a necessary process before extracting keywords from bullet. Texts usually contain lots of noise and uninformative words such as HTML tags and advertisements that make the text hard to understand. In addition, these words cause the curse of dimensionality because each word is treated as one dimension in conventional texting mining techniques such as TF-IDF (Haddi, Liu, and Shi, 2013). Thus, reducing the text's noise must be done to improve the textual analysis. The text pre-processing could vary depending on various text and tasks, and the whole process is called textual transformation (Feinerer, Hornik, and Meyer, 2008).
+
+For this study, words in bullets are converted to lowercase, and any HTML tags or accented characters are removed. Abbreviations are expanded by using related contraction libraries. All Arabic numerals have been removed, taking into account that keywords should have generic characteristics that do not contain specific year or quantity information. For stopwords, the nltk stopword corpus is used as a list of standard stopwords, with some variations related to specific characteristics of the property text. Characters such as ft, sq, area, square, and approx are considered specific attribute words that frequently occur in the text but do not provide valuable information. These words are manually added to the list of stop words, alongside numeric characters. "No" and “off” has been removed from the NLTK stopword list because it changes the entire meaning of the housing characteristics. In addition, each word's part-of-speech (POS) is identified and tagged. Some certain POS words that only contain sole noun character (e.g., bedroom or bedrooms) are removed. Finally, in addition to the necessary commas, extra whitespace tabs and punctuation are removed to tidy up the remaining text. Lemmatization and stemming, referring to transforming a word's inflectional forms into a common base form, are popular in most text transformation processes (Yadav, 2020; Selva, 2018). However, this analysis does not include stemming or lemmatization because these procedures would confuse some housing domain words such as parking and parks.  Table 3.2 gives a sample of a text transformation process.
+
+Table 3.2 a sample text transformation applied to the bullet description
+
+Text transformation tidies up bulleted text and reduces unnecessary information. If all the house characteristics in the property listing are unnecessary, it would end up with a blank cleaned text. These empty property listings are removed.
+
+3.3.2 Measuring overall word frequency and getting preliminary classifications
+
+The next step is to examine the overall word frequency in the cleaned text and find out the few most frequently mentioned aspects in the bullet description. The logic is that if a word is frequently mentioned in many properties, it is at least a thing that consumers value or the property agent think matter, which may impact property values.
+
+Document-term matrix (DTM) and Term Frequency/Inverse Document Frequency (TF-IDF) are the most popular frequency approaches to measure word frequency. DTM tracks the frequency of terms that occur in a collection of documents, while TF-IDF is based on DTM but adds the weight of inverse document frequency (Salton and Buckley, 1988). However, the length of DTM or TF-IDF vectors is equal to the size of the vocabulary. When dealing with massive corpus, these approaches would suffer from the curse of dimensionality and become memory-inefficient (Yun, Ling, and Yong-cheng, 2005). Different Python platforms and modules have various calculating speeds, so the choice of python modules would become crucial.
+
+This study compared the functions in Sklean and NLTK and found that NLTK has much faster computing power. Therefore, to speed up the calculation process, this study uses NLTK and its text and collocation module (NLTK, n.d.). The Text vocab function can quickly return the frequency distribution of a single word in the corpus according to the principle of DTM. In addition, the collocation module allows identifying collocation in which words frequently appear consecutively. Each set of words is scored to determine the relative likelihood of each consecutive word sequence in the text as a collocation. Table 3.3 lists the top 15 most frequently occurred single words, two-word collocations (Bigram), and three-word collocations (Trigram).
+
+Table 3.3 Top 15 most frequently occurred single word, two-word scollocation (Bigram), and three-word collocation (Trigram) in the bullet description
+
+The frequent occurred single word are mostly functional zoning of space such as 'room', 'garden', 'kitchen', 'reception', 'bedroom', and 'bathroom', or some explicitly orientated nouns such as 'chain', 'location' and 'station'. However, without contextual information, a single word is not enough to explain the housing features.
+
+For example, 'room' is a pretty general word. However, if combing Bigram and Trigram, 'room' is found mainly following 'reception', so 'reception' or 'reception room' should be selected as the correct valued feature, but 'room' is not.
+
+The word 'parking' appears in the single word list, revealing its importance recognized by property agents and custermers. 'street parking' in the Bigram seems to enhance the importance of parking. However, the collocation 'off street parking' in Trigram reminds us that not all property descriptions containing 'street parking' means parking a vehicle along a roadside. It could be the opposite meaning. In this situation, more types of parking should be explored.
+
+The word 'garden' repeatedly appears in the table with various adjective modifiers. For sure, 'garden' is a valued feature that may not be simply classified as having a garden or do not have a garden. More explorations should be made to divide 'garden' into sub-level categories.
+
+After analyzing and combining the common words and collocations above single word, Bigram, and Trigram, this study finally picks 11 most frequently mentioned features of property description, some of which need further classification. The preliminary classified features are displayed in Table 3.4.
+
+Table 3.4 preliminary classified housing features extracted from the bullet description
+
+The characteristics of the 11 preliminary classifications can be divided into five aspects: property ownership, property purchase process, housing characteristics, functional zoning, and neighbourhood and location. Except for "double room", all functional compartments are mentioned multiple times with various adjective modifiers and need further classification. In addition, the words "transport connection", "location", "station", "closed", and "local amenities" are considered to represent the overall characteristics of a good neighbourhood and location, as agents always tend to use positive descriptions.
+
+3.3.3 Sub-level classifications and getting dummy keywords variables
+
+Except for the "double bedroom", all functional divisions require further exploration, dividing them into sub-classifications. First, this study extracts all modifiers for each keyword "garden", "reception", "kitchen" and "parking" separately. The Python Re module, which provides regular expression support, is used to find property listings that contain these keywords. A function is defined to extract the modifiers associated with each keyword from the cleaned bullet column and map them to the new column. Table 3.5 provides example results for extracting garden modifiers. For each cleaned bullet description, if it contains a keyword "garden" in any phrase separated by a comma, the word before "garden" will be extracted as modifiers. On the other hand, if the cleaned bullet description does not mention the keyword, the new column will remain empty and marked "None".
+
+Table 3.5 samples of extracting Garden modifiers from the cleaned bullet description
+
+Then, TF-IDF is used to examine and rank the frequency distribution of modifiers for each keyword. The top 30 modifier phrases for each keyword were picked, compared, and categorized into several sub-levels features based on word similarity. In order to check the word similarity, this study initially attempted to use a pre-trained Word2Vec model to create word vectors. Compared to traditional bag models such as TF-IDF, which represent each word in the corpus by a large sparse vector, Word2Vec uses word embedding techniques to create low-dimensional vectors in a continuous vector space (Mikolov, 2013). It is advanced in checking the contextual similarity and semantic relationship between words. Words with high contextual similarity are closer in the vector space, enabling similarity-based word classification (Zhang, 2022). However, it was quickly discovered that Word2Vec was not suitable for this study. The cleaned bullet description itself cannot provide contextual information, so a pre-trained Word2Vec model must be introduced. However, existing pre-trained models only provide vectors for every single word. Modifiers with consecutive word sequences, such as "lovely south facing rear garden", do not exist in existing word vector models. Therefore, after careful consideration, this study decided not to use Word2vec but a human decision process to manually check word similarity and group words into meaningful sub-level categories. The following diagram demonstrates the sample logistic behind the sub-level classification (Figure 3.5).
+
+Figure 3.5 Schematic diagram of the logistic behind sub-level classification decision
+
+In the above three example garden modifiers, words with similar meanings will be grouped together as sub-level garden features. For example, "beautiful" and "stunning" are both positive descriptive adjectives with no special meaning. So these words will be grouped together. On the other hand, "rear" and "front" describe different types of gardens, so they should be divided into two separate categories. There is no fixed number of subclasses per keyword. It is entirely up to the semantic meaning of the modifier.
+
+These sub-level classifications combined with the house features preliminarily classified in the previous step form the complete house characteristics. That is all valuable information extracted from the bullet attribute description. Using regular expression to check each property listing, if the property listing one feature, this feature in this property listing is assigned a value of 1. Otherwise, it is 0. If one property listing contains multiple features, it will have a score of one across multiple features. Finally, this study gets all dummy housing characteristic variables. The details of final variables will be presented and explained in the result section.
+
+3.4 Regression models: evaluating the impacts of keyword features
+
+The last part of this section is to build machine learning regression models to examine the impact of these keyword features. To accurately assess the impact, this study will apply different regression models and run each of them twice: once using the Zoopla variable without extracting keyword features from bullet, and once adding all keyword features based on the first run. The R-squared difference before and after adding keywords can explain the degree of influence of keyword features on attribute values. The more the R-squared increases, the greater the impact of keyword features on home values.
+
+The purpose of running different models is to account for the bias between models, as different models may get different coefficients of variables. Comparing the commonalities and differences of models can identify the most influential keyword features. In consideration of the limitations of the conventional hedonic regression model, this study adopts two regression models: Lasso and GBDT, derived from the hedonic regression model. While GWR is also a powerful technique for examining local spatial relationships, this study focuses on the global relationships between keyword features and property values. Therefore, GWR regression will not be used in this study.
+
+The dataset is divided into train and test datasets in an 80%: 20% ratio. The training dataset refers to the sample of data used to fit the model, while the test dataset is the dataset used to provide a final evaluation of model fit on the training dataset.
+
+3.4.1 Lasso Regression
+
+The Python library scikit-learn provides a Lasso linear model, which is applied to this study (sklearn.linear_model.Lasso, 2022). The Lasso regression model shrinks some regression coefficients that do not contribute much to the prediction task. The coefficients of these unimportant variables are reduced to zero by adding an L1 (absolute value of magnitude) penalty to the loss function. Feature selection is performed after shrinkage, where each non-zero value is selected for the regression model.
+
+The loss function of a linear regression to minimize could be written as:
+
+The Lasso Loss function to minimize could be written as:
+
+added to solve the minimization of the least-squares penalty; Where  is the absolute value of magnitude of the coefficient vector;  is a constant referring to the amount of shrinage, controlling regularization strength;  must be a non-negative float in ;  implies all features are considered and it is equivalent to the linear regression;  implies no feature is considered as it closes to infinity it eliminates more and more features.
+
+The choice of , therefore, is crucial for the Lasso feature selection and regression. This study uses the LassoCV function, running a lasso linear model using cross-validation, to find the optimal .The optimal alpha in this study is 0.0005.
+
+3.4.2 Extreme Gradient Boosting (XGBoost)
+
+As previous literature introduces, ensemble learning is a machine learning technique that combines several base models built with a given learning algorithm to produce one effective optimal prediction (Lutins, 2017). Boosting is the main class of ensemble learning, that boosting algorithms train models sequentially (What is Boosting, 2021). A series of ensemble learners are constructed, and in each new model iteration, the weights of data are redistributed to improve the predictive. Through the successive steps in the learning process, the boosting optimizes the prediction performance.
+
+This study used an optimized distributed gradient boosting library, XGBoost, an open-source library designed for computational speed and scale. It runs much faster than existing popular solutions on a single machine and can scale to billions of examples in distributed or memory-limited settings (Truong et al., 2020). The XGBRegressor model from XGBoost is firstly run with default hyperparameters. However, the model performance varies in data splitting and setting of hyperparameters. Thus, to avoid overfitting and randomness, the study used cross-validation to improve the models' performance. Half of the text dataset is split into a validation dataset, which is used to evaluate a model fit on the training dataset while tuning model hyperparameters. GridSearchCV from scikit-learn is applied to systematically go through multiple combinations of hyperparameters, cross-validating each one, and determine which one gives the best performance. After tweaking the XGBoost model several times, the study gets the optimal hyperparameters as follows:
+
+Learning_rate: 0.27
+
+Max_depth: 5
+
+Min_child_weight: 3
+
+N_estimator: 40
+
+The adjusted hyperparameters are then applied to XGBoost model again to get the optimal predictive performance.
+
+4. Results
+
+The methodology described above is carried out; this section displays and describes the results.
+
+4.1 Keyword Variables
+
+The figures and tables below show the text analysis results on sub-categories of four keywords: garden, parking lot, kitchen, and reception. WordCloud displays the top 30 frequently occurring modifiers associated with each keyword, with larger fonts in WordCould indicating a higher word frequency. The table then shows detailed results for sub-level classification.
+
+4.1.1 Garden variables
+
+Garden variables can be decomposed into eight variables of four main feature types (Table 4.1). The first feature is about ownership, including private and communal, the words most frequently associated with gardens (Figure 4.1). Private gardens are entirely managed and used by the owners, while communal gardens are shared by local residents. The second feature is the type of garden, which can be divided into four types: rear, front, patio, and courtyard. The rear garden, in particular, is the most frequently mentioned type of garden. Orientation is another frequently mentioned feature, with words such as south, west, and facing recurring in the top 30 garden modifiers. Finally, the remaining descriptive adjectives are unified into one garden variable: garden_positive.
+
+Figure 4.1 Top 30 garden modifiers
+
+Table 4.1 Garden variables picked and grouped from the top 30 garden modifiers
+
+4.1.2 Parking variables
+
+Parking can be simply divided into two variables: off-street parking and street parking (Table 4.2). Off-street parking refers to parking a vehicle in an enclosed parking space, as opposed to street parking. Underground and garages that appear in the top 30 parking modifiers are also included in off-street parking (Figure 4.2). Off-street parking is usually related to parking safety, so words related to parking safety, such as gated, private, etc., should also be included in the scope of off-street parking. On the other hand, street parking and residential parking often co-occur, so the two terms should be grouped together. In addition, although words such as space, permit, and car are also in the top 30 parking modifiers, they can only prove that a parking space is available here rather than parking details. So these words will not be considered in the parking sub-classification.
+
+Figure 4.2 Top 30 parking modifiers
+
+Table 4.2 Parking variables picked and grouped from the top 30 parking modifiers
+
+4.1.3 Reception variables
+
+Reception rooms can be decomposed into four variables of three main feature types (Table 4.3). Firstly, it can be divided into "open plan" and "separate" according to the structure. An open-plan reception room means no partitions between different functional areas so that the reception room can share an open space with the kitchen and dining area. In contrast, a separate reception room refers to a separate space enclosed by walls. Similar to the garden, reception modifiers can also be divided into positive descriptive adjectives and orientation. The difference is that the words in reception_positive focus more on the field of vision, including words such as bright light and dual aspect (Figure 4.3). South-facing is the only direction mentioned in the popular modifier, while west-facing does not seem to be an advantage often mentioned in receive descriptions. Although room and rooms are the most frequently mentioned words, the room should be considered part of a "reception room" and therefore has no special categorical meaning.
+
+Figure 4.3 Top 30 reception modifiers
+
+Table 4.3 Reception variables picked and grouped from the top 30 reception modifiers
+
+4.1.4 Kitchen variables
+
+In addition to the positive adjective, the kitchen can be divided into three types according to its structure (Table 4.4). The "open-plan" and "separate" kitchens are similar to those in the reception (Figure 4.4). In addition, the kitchen with the dining area was extracted separately as a variable. Such a kitchen with a dining area can be in either an open-plan kitchen or a separate kitchen.
+
+Figure 4.4 Top 30 kitchen modifiers
+
+Table 4.4 Kitchen variables picked and grouped from the top 30 kitchen modifiers
+
+4.1.5 Correlation matrix among variables
+
+Table 4.5 displays all the 41 independent variables, including the Zoopla numerical variables, dummy variables for sub-region and property types, and all 25 keywords features containing preliminary and sub-level classifications. Their correlations with the dependent variable log_price_last are shown as follows.
+
+Figure 4.5 Correlation matrix among variables
+
+4.2 Performance of Regression Models
+
+Table 4.6 shows the R2 for Lasso and XGBoost models with and without keyword features, respectively. The R2 of the Lasso model before adding the keyword features is 0.608. After adding the keyword features, the R2 of the Lasso model increases slightly by 0.005. The overall R2 value of XGBoost is higher, with a value of 0.687 without the keyword and 0.712 with the keyword. The overall boost is 0.025.
+
+Table 4.6 R2 of Lasso and XGBoost models with and without keyword features
+
+4.2.1 Lasso regression before and after adding keyword features
+
+Figure 4.6 represents the coefficients of the significant variables in Lasso regression without keyword features. It shows that the sub-region central has the highest positive coefficient, followed by the number of bathrooms. Detached house, number of beds, number of receptions, and sub-region west all positively impact the logged property price. On the other hand, the property types studio, flat, Maisonette, and the east and north sub-regions negatively impact the house price.
+
+Figure 4.6 The coefficients of significant variable in Lasso regression without keyword features
+
+Figure 4.7 shows the coefficients of significant variables in Lasso regression with added keyword features. Sub-region central, number of bathrooms, number of beds, and detached houses remain the essential variables that positively affect the logged property values. In contrast, property type studio remains the most influential variable negatively affecting the logged property values. Among the keyword features, en-suites, garden orientation, positive reception modifiers, shared freehold, patio garden, and open-plan reception all positively impact the logged price. On the other hand, keyword characteristics including chain-free, good location, off-street parking, separate kitchen, ground floor, positive kitchen modifiers, and double bedrooms have negative impacts on logged property values.
+
+Figure 4.7 The coefficients of significant variable in Lasso regression with keyword features
+
+4.2.2 XGBoost model before and after adding keyword features
+
+In contrast to Lasso regression, XGBoost models cannot provide apparent positive or negative coefficients for each significant variable. Instead, it measures the importance of each variable by calculating the drop in forecast error caused by removing variables (Hoare, 2017). Figure 4.8 shows the importance of each variable in the XGBoost model without keyword features. The number of bathrooms dominates with a value of 0.492. In addition to the number of bathrooms, the other ten influencing variables are sub-regions central, sub-regions east, number of beds, number of receptions, sub-region north, studio, sub-region west, detached house, and flat.
+
+Figure 4.8 The variables ranked by importance in XGBoost model without keyword features
+
+Figure 4.9 shows the importance of each variable in the XGBoost model with keyword features. The number of bathrooms remains the most noteworthy feature, although its importance dropped to 0.426 as more variables were added. The central subregion, the eastern subregion, and the number of beds are important variables, and their influence on the model is greater than 0.05. Among the top 10 important variables, central-hearting, chain-free, and good location are three prominent keyword characteristics. The other variables have little effect on the regression model, each contributing less than 0.01 to the overall model.
+
+Figure 4.9 The variables ranked by importance in XGBoost model with keyword features
+
+5. Discussion
+
+5.1 Findings in the extracted keyword features
+
+This study contributes to the exploration of uncaptured house features in textual descriptions. Previous empirical studies hardly tried to extract London's housing characteristics from textual descriptions. Through DOC and TF-IDF to filter and sort of word frequencies and human-decision to classify keywords,  this study extracts the 25 house features most frequently mentioned by real estate agents and sellers in the London Zoopla property text descriptions, involving five aspects: property ownership, housing purchase chain, location characteristics, functional zonings, and some other housing attributes.
+
+Property ownership and purchase chain are not physical characteristics of the property, but share-freehold and chain-free are frequently mentioned in the text description, implying that buyers and sellers are very concerned about these issues, which may potentially impact the property value.
+
+A good location is another feature that is widely mentioned but does not belong to the property's physical characteristics. The seller's description often draws the buyer's attention with the convenience of public transportation, proximity to bus stations and transportation links, and proximity to local amenities.
+
+Regarding the property's physical characteristics, people seem to be particularly interested in central heating, what floor the house is on,  and whether the room structure is en-suite. Parking is also a significant concern, mainly on whether there is a parking space and, if so, whether it is on-street or off-street parking.
+
+Bedroom, reception, kitchen, and garden are the four frequently mentioned functional divisions of a property. Through sub-level classification, it is found that there are different concerns for different functional partitions. Gardens can be divided into many types, of which the rear garden is the most common. Orientation is one of the most talked about factors in gardens, with south or southwest facing appearing in garden descriptions. For reception rooms, the focus is usually on having good vision and light. Bright light and dual aspects are often among the positive modifiers associated with reception rooms. When describing the kitchen, sunlight and orientation become less important. Instead, the decoration style is often mentioned. Many sellers tend to describe their kitchens with adjectives like modern, stylish, and modern.
+
+5.2 Interpreting results of models
+
+Overall, the XGBoost model shows better predictive performance than the Lasso regression model, either with or without keyword features. The difference in R2 before and after adding keyword features also shows that the XGBoost model can capture the impact of keyword features to a greater extent. In general, XGBoost can explain about 10% more property data than the Lasso regression model. However, XGBoost can only show the importance of one variable according to the change in prediction error. Whether the effect is positive or negative is often unknown. For a better interpretation of the results,  Lasso and XGBoost should be combined to find common features and differences between the models.
+
+5.2.1 The importance of spatial location and total area
+
+Both model results underscore the importance of spatial location and total property area. In the XGBoost regression, the order of the top 5 important variables never change with or without the keyword feature: number of bathrooms, sub-region central, sub-region east, number of beds, and number of receptions. Two are location variables, and three are regional variables.
+
+Although in the XGBoost model, both the central and eastern sub-regions have significant impacts on real estate values, the results of the Lasso regression model further explain the spatial disparity. In the Lasso regression, the sub-region central is consistently the most positively influencing variable compared to the other sub-regions. In contrast, the sub-region east has lower property prices than the other sub-regions.
+
+In addition, the number of bathrooms, the number of beds, and the number of receptions are the first, fourth, and fifth important variables in the XGBoost model, respectively. All three variables are related to the total area of properties, as properties with more space generally tend to have more bathrooms, beds, and receptions. The correlation matrix also shows that these three variables are strongly correlated. Lasso regression shows that all three variables positively affect property values.
+
+The property type of detached houses and studios can also demonstrate the important impact of home size on house prices. Both detached and studios are in the top 15 for feature importance in XGBoost. However, according to the supplemental information provided in Lasso's regression, the detached house positively impacts property values, while the studio has the most negative impact on property values. It is not difficult to understand. A detached house is a house that is not connected to any other building. It usually represents a low-density living environment, good privacy, and a large total area. It shows that the average size of a detached house in London is 883 sq ft (Mortgage Introducer, 2021). In contrast,  a studio is a large room combined with a living room, dining room, and bedroom. It is usually smaller in size.
+
+5.2.2 Meaningful keyword features
+
+Total area and spatial location information explain 60.8% and 68.7% of property values in the Lasso and XGBoost datasets. Therefore, the improvement of R2 by keyword features does not seem very obvious, and the overall R2 value increases by 0.5% and 2.5%, respectively. However, this does not exceed the expectations of the study. Most previous research has pointed to the importance of location, and the total size of a property is definitely related to the total price. The primary purpose of this study is not to expect that text housing features will significantly increase the prediction results. Instead, this study expects these keyword features to be the icing on the cake, making predictions more detailed.
+
+Six keyword features are in the top 15 important variables in the XGBoost model: central heating, chain-free, good location, double bedroom, garden orientation, and ground floor. Each keyword feature occupies 1% to 2.5% importance in the overall model. It could regard as these six features contribute to the property value, while other keyword features may not have an apparent influence on the property value. Combined with Lasso regression, except for garden orientation, the other five keyword features negatively impact the property value.
+
+Garden orientation is often a hot selling point in real estate advertisements, with south or southwest-facing gardens more attractive than any other type of garden (Eldron, 2018). As London is located at around 51° north latitude, plenty of sunlight is essential for the home (Bedford, n.d.). A south-facing garden maximizes the available sunlight. In addition, a south-facing garden means that the sun rises in the east and sets in the west, but not directly from the top of the garden, avoiding direct sunlight and making the sun softer. As a result, south-facing gardens command a premium when the property hits the market. However,  previous studies have hardly quantified the impact of south-facing gardens on houses. Most discussions about garden orientation and house prices exist only in the promotion of real estate agents. This study quantifies the impact of garden orientation and clearly shows that garden orientation positively affects house prices.
+
+The ground floor is found to have a negative impact on the property value. Privacy and security are ills on the first floor. Many residences in London are close to shops and services, meaning many people will pass by the house. Living on the first floor means that the furnishings inside the house may be visible, and the owner needs to be more vigilant about burglary than on the upper floors. Also, traditional tenement buildings are not built with today's building materials and technologies, so traditional tenement buildings, especially the ground floor, will increase the risk of the damp year by year (Blair , 2019). For these reasons, properties on the ground floor are slightly less valuable than those on high floors. The small positive coefficient in the number of floors in Lasso regression may also demonstrate that people prefer to live on higher floors.
+
+Extracted text features are expected to positively impact property values, since no real estate agent would use negative features for marketing properties. However, in addition to the ground floor, It is unexpectedly found that properties mentioned keywords such as central heating, chain free, good location, and double room are less valuable than properties that do not mention these keywords. One assumption is that cheap properties tend to use more descriptions to promote themselves. For example, while central heating and double rooms represent a good housing feature, they are so common in properties today that many might even bother to mention them. Central heating may have been a luxury when it first appeared in UK homes in the 1970s, but today only a small percentage of UK properties do not have central heating (BBC, 2009). To test this conjecture, we count the sum of the number of keyword features contained in each property record, and properties with more keyword features have higher scores. Table 5.1 shows the average property price and the proportion of six significant keyword features in each score level. A score of zero indicates that none of the 25 extracted textual features are mentioned in the cleaned bulleted description of these properties. A score of 9 means that nine textual features are mentioned in the cleaned bulleted description of these properties.
+
+Table 5.1 The average property price and the proportion of significant  keyword features in each score level
+
+This table validates our inference. As more text feature scores are obtained, the average property price does not rise but falls. The average property price dropped from £1,288,764 to £616,291 when the score increased from 0 to 9. At the same time, as the score increases, the probability of mentioning keyword features gradually increases. For example, only 35% of properties with a score of 1 mentioned location-related information, compared to 92% of properties with a score of 9. It suggests that cheaper properties place more emphasis on marketing themselves on location. A property that does not mention location does not mean it is in a poor location; maybe it just does not need to use location to attract buyers. It should also be noted that since this study extracts the most common keyword features based on DOC and TF-IDF word frequency, it indicates that most of the keywords for the cheap property are pretty common. For high-end properties, there may be some more targeted but not captured textual features.
+
+5.3 Limitation and future developments
+
+As mentioned above, this study found that the most common keyword features in property descriptions tend to be the marketing focus of cheap properties. However, for high-end properties, some unobserved keyword features still need to be further explored. The word frequency ranking and human decision-making process filtered out the most common words in property descriptions while ignoring massive niche keyword features. These keywords may be rarely mentioned, but they can be more representative and impact house prices. Therefore, future research can summarize and classify all vocabularies in a clean bullet description instead of selecting only some words with the highest frequency to extract textual features more comprehensively.
+
+In addition to this, future studies could use more comprehensive datasets. The value of Zoopla property data is that it provides abundant textual descriptions, making it possible to extract housing feature information from texts. However, it can only provide very limited other housing information, such as the location and total price of a property. In this study, unfortunately, the property price per square meter is more important than the total price of a property. Since the total price of a property is destined to be affected by the total area,  the total area is always one of the most dominant variables. In contrast, the influence of other variables on the property value is diluted to a certain extent. The price per square meter can strip the impact of the total area on the price and better present the impact of keyword features. The Zoopla data does not provide the total area variable, and it can only be roughly estimated from the number of reception rooms, bathrooms, and bedrooms. That makes it difficult to calculate the property price per square meter. Therefore, future research could link Zoopla property data and House Price per Square Metre. One potential choice is the new property dataset that Chi et al.(2021) created. As introduced in previous sections, this dataset linked residential transaction records from Land Registry Price Payment Data (LR-PPD) and real estate data from the domestic Energy Performance Certificate (EPC) together, providing both house prices per square meter and a significant number of property attribute data.
+
+6. Conclusion
+
+In conclusion, this study explores unobserved housing characteristics from unstructured property advertising text and measures their impact on the property value. The study area is set in London, with the use of 2020 Zoopla property data. After a series of data processing and text cleaning processes, more than 100,000 property records are finally used for this analysis. This study uses NLP technology, especially DTM and TF-IDF, to filter the most frequently mentioned and concerned vocabularies in the property bullet description, and then supplemented by artificial decision-making, dividing keywords into 25 categories under five categories. These keyword features are converted into dummy variables to complement Zoopla property data. Finally, the machine learning methods Lasso and XGBoost regressions are used to construct prediction models with and without keyword features, respectively.
+
+The XGBoost model has been tested to have better overall prediction performance than the Lasso regression model. However, since XGBoost cannot fully interpret the specific impact of features on housing prices, this study combines the two models to interpret the results jointly. This study has the following major findings: 1. House ownership and purchase chain, these house attributes that are not part of the physical characteristics of the house, are frequently mentioned in the property description; 2. There are different promotion focuses on the different housing keyword features in advertisements. The parking pays attention to type; The garden pays attention to the orientation; The reception room pays attention to light; The kitchen pays attention to the decoration style. 3. The total area and location of the property are two attributes that have a decisive impact on the overall housing price. 4. Six keyword features: central heating, no chain, good location, double bedroom, garden orientation, and ground floor, have a greater impact on housing prices than other keyword features. Among them, except for the garden orientation, the other five housing characteristics have a negative impact on housing prices. Through further analysis, this paper speculates that the most common keyword features in property descriptions tend to be the marketing focus of cheap properties.
+
+Bibliography
+
+Abbe, A. et al. (2016) ‘Text mining applications in psychiatry: a systematic literature review’, International Journal of Methods in Psychiatric Research, 25(2), pp. 86–100. Available at: https://doi.org/10.1002/mpr.1481.
+
+Adetunji, A.B. et al. (2022) ‘House Price Prediction using Random Forest Machine Learning Technique’, Procedia Computer Science, 199, pp. 806–813. doi:10.1016/j.procs.2022.01.100.
+
+Badarinza, C. and Ramadorai, T. (2018) ‘Home away from home? Foreign demand and London house prices’, Journal of Financial Economics, 130(3), pp. 532–555. Available at: https://doi.org/10.1016/j.jfineco.2018.07.010.
+
+Ball, M.J. (1973) ‘Recent Empirical Work on the Determinants of Relative House Prices’, Urban Studies, 10(2), pp. 213–233. doi:10.1080/00420987320080311.
+
+BBC (2009) ‘What central heating has done for us’, 1 October. Available at: http://news.bbc.co.uk/1/hi/magazine/8283796.stm (Accessed: 18 August 2022).
+
+BBC News (2017) ‘Two more second homes bans agreed in Cornwall’, 5 May. Available at: https://www.bbc.com/news/uk-england-cornwall-39823453 (Accessed: 27 July 2022).
+
+Bedford, D. (no date) South Facing Garden: Essential Or Desirable? Available at: https://www.pettyson.co.uk/about-us/our-blog/536-south-facing-garden-essential-or-desirable (Accessed: 18 August 2022).
+
+Benlahbib, A., Boumhidi, A. and Nfaoui, E.H. (2022) ‘Mining Online Reviews to Support Customers’ Decision-Making Process in E-Commerce Platforms: A Narrative Literature Review’, Journal of Organizational Computing and Electronic Commerce, 32(1), pp. 69–97. Available at: https://doi.org/10.1080/10919392.2022.2053454.
+
+Bennöhr, L. and Oestmann, M. (2014) Determinants of House Price Dynamics. What Can We Learn From Search Engine Data? SSRN Scholarly Paper 2513199. Rochester, NY: Social Science Research Network. doi:10.2139/ssrn.2513199.
+
+Benoit, K. (2011) ‘Linear Regression Models with Logarithmic Transformations’, London School of Economics, London 22(1)(23–36).
+
+Beracha, E. and Wintoki, M.B. (2013) ‘Forecasting Residential Real Estate Price Changes from Online Search Activity’, Journal of Real Estate Research, 35(3), pp. 283–312. Available at: https://doi.org/10.1080/10835547.2013.12091364.
+
+Bi̇li̇k, M. and Aydin, Ü. (2019) ‘Konut Sahibi Olma Kararlarını Etkileyen Faktörler: Lojistik Regresyon Ve Destek Vektör Makinelerinin Karşılaştırılması’, Dumlupınar Üniversitesi Sosyal Bilimler Dergisi, (62), pp. 184–199.
+
+Bitter, C., Mulligan, G.F. and Dall’Erba, S. (2007) ‘Incorporating spatial variation in housing attribute prices: a comparison of geographically weighted regression and the spatial expansion method’, Journal of Geographical Systems, 9, pp. 7–27. Available at: https://doi.org/10.1007/s10109-006-0028-7.
+
+Blair (2019) ‘1st Floor, Ground Floor, Top Floor?’, Clancys Solicitors, 12 August. Available at: https://www.clancys-solicitors.co.uk/first-floor-ground-floor-top-floor/ (Accessed: 18 August 2022).
+
+Bourne, J. (2019) ‘Empty homes: mapping the extent and value of low-use domestic property in England and Wales’, Palgrave Communications, 5(1), pp. 1–14. Available at: https://doi.org/10.1057/s41599-019-0216-y.
+
+Can, A. (1992) ‘Specification and estimation of hedonic housing price models’, Regional Science and Urban Economics, 22(3), pp. 453–474. Available at: https://doi.org/10.1016/0166-0462(92)90039-4.
+
+Chi, B. et al. (2021) ‘A new attribute-linked residential property price dataset for England and Wales, 2011–2019’, UCL Open Environment, 3(1). doi:10.14324/111.444/ucloe.000019.
+
+Delmelle, E.C. and Nilsson, I. (2021) ‘The language of neighborhoods: A predictive-analytical framework based on property advertisement text and mortgage lending data’, Computers, Environment and Urban Systems, 88, p. 101658. doi:10.1016/j.compenvurbsys.2021.101658.
+
+Eldron (2018) ‘Garden Orientation and Buying a Property: What You Need to Know’, Eldron, 10 January. Available at: https://eldron.ie/garden-orientation/ (Accessed: 18 August 2022).
+
+Evans, A.W. (1973) The Economics of Residential Location. Springer.
+
+Fan, G.-Z., Ong, S.E. and Koh, H.C. (2006) ‘Determinants of House Price: A Decision Tree Approach’, Urban Studies, 43(12), pp. 2301–2315. Available at: https://doi.org/10.1080/00420980600990928.
+
+Feinerer, I., Hornik, K. and Meyer, D. (2008) ‘Text Mining Infrastructure in R’, Journal of Statistical Software, 025(i05). Available at: https://ideas.repec.org/a/jss/jstsof/v025i05.html (Accessed: 9 August 2022).
+
+Fotheringham, A.S., Charlton, M.E. and Brunsdon, C. (2001) ‘Spatial Variations in School Performance: A Local Analysis Using Geographically Weighted Regression’, Geographical and Environmental Modelling, 5(1), pp. 43–66. Available at: https://doi.org/10.1080/13615930120032617.
+
+Goodman, A.C. (1998) ‘Andrew Court and the Invention of Hedonic Price Analysis’, Journal of Urban Economics, 44(2), pp. 291–298. Available at: https://doi.org/10.1006/juec.1997.2071.
+
+Goodwin, K., Waller, B. and Weeks, H.S. (2014) ‘The Impact of Broker Vernacular in Residential Real Estate’, Journal of Housing Research, 23(2), pp. 143–161. Available at: https://doi.org/10.1080/10835547.2014.12092089.
+
+Guo, J.-Q. et al. (2020) ‘CAN MACHINE LEARNING ALGORITHMS ASSOCIATED WITH TEXT MINING FROM INTERNET DATA IMPROVE HOUSING PRICE PREDICTION PERFORMANCE?’, International Journal of Strategic Property Management, 24(5), pp. 300–313. Available at: https://doi.org/10.3846/ijspm.2020.12742.
+
+Hacıevliyagil, N., Drachal, K. and Eksi, I.H. (2022) ‘Predicting House Prices Using DMA Method: Evidence from Turkey’, Economies, 10(3), p. 64. doi:10.3390/economies10030064.
+
+Haddi, E., Liu, X. and Shi, Y. (2013) ‘The Role of Text Pre-processing in Sentiment Analysis’, Procedia Computer Science, 17, pp. 26–32. Available at: https://doi.org/10.1016/j.procs.2013.05.005.
+
+Hoare, J. (2017) ‘Gradient Boosting Explained - The Coolest Kid on The Machine Learning Block’, Displayr, 5 June. Available at: https://www.displayr.com/gradient-boosting-the-coolest-kid-on-the-machine-learning-block/ (Accessed: 17 August 2022).
+
+Housing in London 2021 (2021). Greater London Authority. Available at: https://data.london.gov.uk/housing/housing-in-london/ (Accessed: 5 June 2022).
+
+J.A. et al. (2021) ‘Prediction of House Price Using XGBoost Regression Algorithm’, Turkish Journal of Computer and Mathematics Education (TURCOMAT), 12(2). doi:10.17762/turcomat.v12i2.1870.
+
+Kain, J.F. and Quigley, J.M. (1970) ‘Measuring the Value of Housing Quality’, Journal of the American Statistical Association, 65(330), pp. 532–548.
+
+Lancaster, K.J. (1966) ‘A New Approach to Consumer Theory’, Journal of Political Economy, 74(2), pp. 132–157.
+
+Lane, R. (1970) " Some Findings on Residential Location, House Prices and Accessibility, paper given to Research and Intelligence Unit, Department of Planning and Transportation, Greater London Council .”
+
+Levantesi, S. and Piscopo, G. (2020) ‘The Importance of Economic Variables on London Real Estate Market: A Random Forest Approach’, Risks, 8(4), p. 112. doi:10.3390/risks8040112.
+
+Liu, C.H., Nowak, A.D. and Smith, P.S. (2020) ‘Asymmetric or Incomplete Information about Asset Values?’, The Review of Financial Studies, 33(7), pp. 2898–2936. Available at: https://doi.org/10.1093/rfs/hhz096.
+
+Liberti, J.M. and Petersen, M.A. (2019) ‘Information: Hard and Soft’, The Review of Corporate Finance Studies, 8(1), pp. 1–41. Available at: https://doi.org/10.1093/rcfs/cfy009.
+
+London Housing Strategy (2018). Greater London Authority. Available at: https://www.london.gov.uk/sites/default/files/2018_lhs_london_housing_strategy.pdf (Accessed: 5 June 2022).
+
+Lu, B. et al. (2014) ‘Geographically weighted regression with a non-Euclidean distance metric: a case study using hedonic house price data’, International Journal of Geographical Information Science, 28(4), pp. 660–681. doi:10.1080/13658816.2013.865739.
+
+Lu, S. et al. (2017) ‘A hybrid regression technique for house prices prediction’, in 2017 IEEE International Conference on Industrial Engineering and Engineering Management (IEEM), pp. 319–323. Available at: https://doi.org/10.1109/IEEM.2017.8289904.
+
+Lutins, E. (2017) Ensemble Methods in Machine Learning: What are They and Why Use Them?, Medium. Available at: https://towardsdatascience.com/ensemble-methods-in-machine-learning-what-are-they-and-why-use-them-68ec3f9fef5f (Accessed: 22 April 2022).
+
+Lutins, E. (2017) Ensemble Methods in Machine Learning: What are They and Why Use Them?, Medium. Available at: https://towardsdatascience.com/ensemble-methods-in-machine-learning-what-are-they-and-why-use-them-68ec3f9fef5f (Accessed: 22 April 2022).
+
+Madhuri, CH.R., Anuradha, G. and Pujitha, M.V. (2019) ‘House Price Prediction Using Regression Techniques: A Comparative Study’, in 2019 International Conference on Smart Structures and Systems (ICSSS), pp. 1–5. Available at: https://doi.org/10.1109/ICSSS.2019.8882834.
+
+Marsden, J. (2015) ‘House prices in London – an economic analysis of London’s housing market’, p. 65.
+
+McCord, M. et al. (2012) ‘Spatial variation as a determinant of house price: Incorporating a geographically weighted regression approach within the Belfast housing market’, Journal of Financial Management of Property and Construction, 17(1), pp. 49–72. doi:https://doi.org/10.1108/13664381211211046.
+
+Mikolov, T., Le, Q.V. and Sutskever, I. (2013) ‘Exploiting Similarities among Languages for Machine Translation’, arXiv:1309.4168 [cs] [Preprint]. Available at: http://arxiv.org/abs/1309.4168 (Accessed: 2 May 2022).
+
+Mortgage Introducer (2021) Average detached London home worth £982,085, Mortgage Introducer. Available at: https://www.mpamag.com/uk/news/general/average-detached-london-home-worth-982085/388055 (Accessed: 17 August 2022).
+
+NLTK :: nltk.collocations (no date). Available at: https://www.nltk.org/_modules/nltk/collocations.html (Accessed: 9 August 2022).
+
+Parthasarathy, S. (2019) Difference between Traditional programming versus Machine Learning from a PM perspective, Medium. Available at: https://productcoalition.com/difference-between-traditional-programming-versus-machine-learning-from-a-pm-perspective-3802b02bc7f6 (Accessed: 3 August 2022).
+
+Passey, D. (2014) ‘Early Uses of Computers in Schools in the United Kingdom: Shaping Factors and Influencing Directions’, in A. Tatnall and B. Davey (eds) Reflections on the History of Computers in Education. Berlin, Heidelberg: Springer Berlin Heidelberg (IFIP Advances in Information and Communication Technology), pp. 131–149. Available at: https://doi.org/10.1007/978-3-642-55119-2_9.
+
+Richardson, H.W., Vipond, J. and Furbey, R.A. (1974) ‘Determinants of Urban House Prices’, Urban Studies, 11(2), pp. 189–199. doi:10.1080/00420987420080341.
+
+Ricks, B. (1970) ‘New Town Development and the Theory of Location’, Land Economics, 46(1), pp. 5–11. Available at: https://doi.org/10.2307/3145418.
+
+Rosen, S. (1974) ‘Hedonic Prices and Implicit Markets: Product Differentiation in Pure Competition’, Journal of Political Economy, 82(1), pp. 34–55.
+
+Rzhetsky, A., Seringhaus, M. and Gerstein, M.B. (2009) ‘Getting Started in Text Mining: Part Two’, PLOS Computational Biology, 5(7), p. e1000411. Available at: https://doi.org/10.1371/journal.pcbi.1000411.
+
+Salton, G. and Buckley, C. (1988) ‘Term-weighting approaches in automatic text retrieval’, Information Processing & Management, 24(5), pp. 513–523. Available at: https://doi.org/10.1016/0306-4573(88)90021-0.
+
+Sari, R., Ewing, B.T. and Aydin, B. (2007) ‘Macroeconomic Variables and the Housing Market in Turkey’, Emerging Markets Finance and Trade, 43(5), pp. 5–19. doi:10.2753/REE1540-496X430501.
+
+Selim, H. (2009) ‘Determinants of house prices in Turkey: Hedonic regression versus artificial neural network’, Expert Systems with Applications, 36(2, Part 2), pp. 2843–2852. Available at: https://doi.org/10.1016/j.eswa.2008.01.044.
+
+Selva Prabhakaran (2018) Lemmatization Approaches with Examples in Python, Machine Learning+. Available at: https://www.machinelearningplus.com/nlp/lemmatization-examples-python/ (Accessed: 9 August 2022).
+
+Shen, L. and Ross, S. (2021) ‘Information value of property description: A Machine learning approach’, Journal of Urban Economics, 121, p. 103299. Available at: https://doi.org/10.1016/j.jue.2020.103299.
+
+Sheppard, S. (1999) ‘Chapter 41 Hedonic analysis of housing markets’, in Handbook of Regional and Urban Economics. Elsevier (Applied Urban Economics), pp. 1595–1635. Available at: https://doi.org/10.1016/S1574-0080(99)80010-8.
+
+sklearn.linear_model.Lasso (2022) scikit-learn. Available at: https://scikit-learn/stable/modules/generated/sklearn.linear_model.Lasso.html (Accessed: 14 August 2022).
+
+Sub-regions (London Plan Consultation 2009) - London Datastore’ (no date). Available at: https://data.london.gov.uk/dataset/sub-regions-london-plan-consultation-2009 (Accessed: 8 August 2022).
+
+Tibshirani, R. (1996) ‘Regression Shrinkage and Selection via the Lasso’, Journal of the Royal Statistical Society. Series B (Methodological), 58(1), pp. 267–288.
+
+Tobler, W.R. (1970) ‘A Computer Movie Simulating Urban Growth in the Detroit Region’, Economic Geography, 46, pp. 234–240. doi:10.2307/143141.
+
+Trochim, W.M.K. (no date) Dummy Variables. Available at: https://conjointly.com/kb/dummy-variables/ (Accessed: 8 August 2022).
+
+Truong, Q. et al. (2020) ‘Housing Price Prediction via Improved Machine Learning Techniques’, Procedia Computer Science, 174, pp. 433–442. Available at: https://doi.org/10.1016/j.procs.2020.06.111.
+
+Valdivia, A., Luzón, M.V. and Herrera, F. (2017) ‘Sentiment Analysis in TripAdvisor’, IEEE Intelligent Systems, 32(4), pp. 72–77. Available at: https://doi.org/10.1109/MIS.2017.3121555.
+
+Wabe, J.S. (1971) ‘A Study of House Prices as a means of Establishing the Value of Journey Time, the Rate of Time Preference and the Valuation of some Aspects of Environment in the London Metropolitan Region’, Applied Economics, 3(4), pp. 247–255. doi:10.1080/00036847100000012.
+
+Wang, X., Li, K. and Wu, J. (2020) ‘House price index based on online listing information: The case of China’, Journal of Housing Economics, 50, p. 101715. doi:10.1016/j.jhe.2020.101715.
+
+What is Boosting? (2021). Available at: https://www.ibm.com/cloud/learn/boosting (Accessed: 23 April 2022).
+
+XGBoost Parameters — xgboost 1.6.1 documentation (2021). Available at: https://xgboost.readthedocs.io/en/stable/parameter.html (Accessed: 14 August 2022).
+
+Yadav, D. (2020) NLP: Building Text Cleanup and PreProcessing Pipeline, Medium. Available at: https://towardsdatascience.com/nlp-building-text-cleanup-and-preprocessing-pipeline-eba4095245a0 (Accessed: 9 August 2022).
+
+Yip, P.S.L. and Tsang, E.W.K. (2007) ‘Interpreting dummy variables and their interaction effects in strategy research’, Strategic Organization, 5(1), pp. 13–30. Available at: https://doi.org/10.1177/1476127006073512.
+
+Yun-tao, Z., Ling, G. and Yong-cheng, W. (2005) ‘An improved TF-IDF approach for text classification’, Journal of Zhejiang University-SCIENCE A, 6(1), pp. 49–55. Available at: https://doi.org/10.1007/BF02842477.
+
+Zhang, F. (2022) ‘A hybrid structured deep neural network with Word2Vec for construction accident causes classification’, International Journal of Construction Management, 22(6), pp. 1120–1140. doi:10.1080/15623599.2019.1683692.
+
+Zhang, F. (2022) ‘A hybrid structured deep neural network with Word2Vec for construction accident causes classification’, International Journal of Construction Management, 22(6), pp. 1120–1140. doi:10.1080/15623599.2019.1683692.
+
+Zhang, Q. (2021) ‘Housing Price Prediction Based on Multiple Linear Regression’, Scientific Programming, 2021, p. e7678931. doi:10.1155/2021/7678931.
